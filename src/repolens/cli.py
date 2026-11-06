@@ -1,0 +1,63 @@
+"""Command-line interface: `repolens scan <path> [-o FILE]` (SPEC.md section 4).
+
+Exit codes: 0 success (even if some files had errors), 2 bad path, bad
+arguments, or an output file that cannot be written.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from repolens.output import to_json
+from repolens.python.analyzer import analyze
+
+EXIT_OK = 0
+EXIT_USAGE = 2
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="repolens",
+        description="Local-first static architecture analysis for Python projects.",
+    )
+    commands = parser.add_subparsers(dest="command")
+    scan = commands.add_parser("scan", help="scan a project and write its import graph as JSON")
+    scan.add_argument("path", help="folder of the project to scan")
+    scan.add_argument("-o", "--output", metavar="FILE", help="write JSON to FILE instead of stdout")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)  # bad arguments: argparse exits with code 2
+    if args.command is None:
+        parser.print_usage(sys.stderr)
+        return EXIT_USAGE
+
+    repo_root = Path(args.path)
+    if not repo_root.is_dir():
+        print(f"repolens: error: not a folder: {args.path}", file=sys.stderr)
+        return EXIT_USAGE
+
+    # Encode to UTF-8 bytes ourselves. Writing text would let Windows turn
+    # "\n" into "\r\n" and use a non-UTF-8 console encoding, so the output
+    # would differ between machines.
+    data = to_json(analyze(repo_root)).encode("utf-8")
+
+    if args.output:
+        try:
+            Path(args.output).write_bytes(data)
+        except OSError as exc:
+            reason = exc.strerror or type(exc).__name__
+            print(f"repolens: error: cannot write {args.output}: {reason}", file=sys.stderr)
+            return EXIT_USAGE
+    else:
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.flush()
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    sys.exit(main())
