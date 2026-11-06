@@ -10,9 +10,15 @@ def detect_roots(py_files: list[str]) -> list[str]:
     file lives under ./src (directly, or inside a package or namespace
     package), the roots are ["src", "."]. Otherwise they are ["."].
 
+    Exception (D35): if src/__init__.py exists, src is a normal package, not
+    a source root. The roots are then ["."], so `from src.app import x`
+    resolves against the module ids "src", "src.app" and so on.
+
     The list is in resolution order, not alphabetical order: "src" comes
     first because absolute imports try it first.
     """
+    if "src/__init__.py" in py_files:
+        return ["."]
     if any(path.startswith("src/") for path in py_files):
         return ["src", "."]
     return ["."]

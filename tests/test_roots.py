@@ -17,6 +17,17 @@ def test_src_project_roots_are_src_then_dot() -> None:
     assert detect_roots(files) == ["src", "."]
 
 
+def test_src_with_init_is_a_package_not_a_root() -> None:
+    files = scan_python_files(FIXTURES / "src_package_project")
+    roots = detect_roots(files)
+    assert roots == ["."]
+    assert {path: module_id(path, roots) for path in files} == {
+        "main.py": "main",
+        "src/__init__.py": "src",
+        "src/app/__init__.py": "src.app",
+    }
+
+
 def test_longest_root_gives_the_module_id() -> None:
     roots = ["src", "."]
     assert module_id("src/mypkg/x.py", roots) == "mypkg.x"

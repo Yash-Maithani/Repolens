@@ -159,6 +159,14 @@ def test_src_project_edges_are_local() -> None:
     }
 
 
+def test_src_package_import_resolves_to_src_app() -> None:
+    # src/__init__.py exists, so src is a normal package and roots = ["."]
+    # (D35). `x` is a name inside src/app/__init__.py, not a module.
+    result = analyze(FIXTURES / "src_package_project")
+    edges = {(e.source, e.target, e.classification) for e in result.edges}
+    assert edges == {("main", "src.app", LOCAL)}
+
+
 def test_literal_dynamic_import_is_classified_and_stays_dynamic() -> None:
     result = analyze(FIXTURES / "imports_project")
     dynamic = {
