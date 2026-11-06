@@ -28,17 +28,25 @@ def module_id(path: str, roots: list[str]) -> str:
     Path parts are used as they are, even if they are not valid Python
     identifiers ("my-scripts/run.py" -> "my-scripts.run").
     """
+    return locate(path, roots)[1]
+
+
+def locate(path: str, roots: list[str]) -> tuple[str, str]:
+    """Return (root, module id) for a repo-relative .py path.
+
+    The root is the one the id was taken from. The analyzer uses it to decide
+    which file wins when two files get the same id (D33).
+    """
     for root in sorted(roots, key=_root_length, reverse=True):
         if root == "." or path.startswith(root + "/"):
             relative = path if root == "." else path[len(root) + 1 :]
             parts = _module_parts(relative)
             if parts:
-                return ".".join(parts)
-            # The file is the root's own __init__.py (for example
-            # src/__init__.py). It has no id under this root, so try the
-            # next, shorter root.
+                return root, ".".join(parts)
+            # The file is the root's own __init__.py, so it has no id under
+            # this root. Try the next, shorter root.
     # Only a top-level ./__init__.py reaches this point.
-    return "__init__"
+    return ".", "__init__"
 
 
 def _root_length(root: str) -> int:

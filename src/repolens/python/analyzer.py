@@ -12,10 +12,11 @@ from pathlib import Path
 from repolens.model import Edge, FileError, ImportClass, Module, Observation, ScanResult
 from repolens.python import resolver
 from repolens.python.extractor import extract_file
-from repolens.python.roots import detect_roots, module_id
+from repolens.python.roots import detect_roots, locate
 from repolens.scanner import scan_python_files
 
 LANGUAGE = "python"
+SHADOWED_MODULE = "ShadowedModule"
 
 # The shape of resolver.resolve: (importer, module, names, level, known_modules).
 ResolveFunction = Callable[
@@ -34,12 +35,11 @@ def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanR
 
     files = scan_python_files(repo_root)
     roots = detect_roots(files)
-    modules = [Module(module_id(path, roots), LANGUAGE, path) for path in files]
+    modules, errors = _pick_modules(files, roots)
     known_modules = {module.id for module in modules}
 
     edges: set[Edge] = set()  # a set removes exact duplicates (D13)
     observations: list[Observation] = []
-    errors: list[FileError] = []
 
     for importer in modules:
         extracted = extract_file(repo_root, importer.path)
@@ -59,3 +59,30 @@ def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanR
         observations=observations,
         errors=errors,
     )
+
+
+def _pick_modules(files: list[str], roots: list[str]) -> tuple[list[Module], list[FileError]]:
+    """Give every file a module id. When two files get the same id, keep one.
+
+    The file under the EARLIER root in the roots list wins, like Python's
+    sys.path order (D33). Within one root, a package's __init__.py wins over
+    a module file with the same id (app/auth/__init__.py over app/auth.py),
+    as in Python's import system (D34). The losing file is not a module: it
+    is reported as a ShadowedModule error and is not analysed.
+    """
+    candidates: dict[str, list[tuple[tuple[int, int, str], str]]] = {}
+    for path in files:
+        root, mod_id = locate(path, roots)
+        is_package = path == "__init__.py" or path.endswith("/__init__.py")
+        rank = (roots.index(root), 0 if is_package else 1, path)
+        candidates.setdefault(mod_id, []).append((rank, path))
+
+    modules: list[Module] = []
+    errors: list[FileError] = []
+    for mod_id, entries in candidates.items():
+        entries.sort()
+        modules.append(Module(mod_id, LANGUAGE, entries[0][1]))
+        for _, shadowed_path in entries[1:]:
+            errors.append(FileError(shadowed_path, None, SHADOWED_MODULE))
+    modules.sort(key=lambda module: module.path)  # analyse files in path order
+    return modules, errors

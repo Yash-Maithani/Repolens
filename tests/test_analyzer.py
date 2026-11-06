@@ -42,6 +42,30 @@ def test_same_import_on_two_lines_gives_two_edges(tmp_path: Path) -> None:
     assert sorted(e.evidence.line for e in result.edges) == [1, 2]
 
 
+def test_earlier_root_wins_and_shadowed_file_is_an_error() -> None:
+    # src/app/x.py and app/x.py both get the id "app.x". Roots are
+    # ["src", "."], so the file under "src" wins (D33).
+    result = analyze(FIXTURES / "shadow_project", resolve_fn=fake_resolve)
+
+    assert result.language_roots == {"python": ["src", "."]}
+    assert [(m.id, m.path) for m in result.modules] == [("app.x", "src/app/x.py")]
+    assert result.errors == [FileError("app/x.py", None, "ShadowedModule")]
+    # The shadowed file is not analysed, so its `import json` gives no edge.
+    assert {e.evidence.file for e in result.edges} == {"src/app/x.py"}
+
+
+def test_package_init_wins_over_module_file_in_same_root(tmp_path: Path) -> None:
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "auth").mkdir()
+    (tmp_path / "app" / "auth.py").write_text("", encoding="utf-8")
+    (tmp_path / "app" / "auth" / "__init__.py").write_text("", encoding="utf-8")
+
+    result = analyze(tmp_path, resolve_fn=fake_resolve)
+
+    assert [(m.id, m.path) for m in result.modules] == [("app.auth", "app/auth/__init__.py")]
+    assert result.errors == [FileError("app/auth.py", None, "ShadowedModule")]
+
+
 def test_src_project_ids_and_roots() -> None:
     result = analyze(FIXTURES / "src_project", resolve_fn=fake_resolve)
     assert result.language_roots == {"python": ["src", "."]}
