@@ -69,7 +69,7 @@ Every requirement has a label:
 - [C] A package's `__init__.py` gets the package's id. Example: `app/auth/__init__.py` has id `app.auth`.
 - [C] Module ids are relative to a source root. A file's id comes from the LONGEST root that contains it. Example: with roots `["src", "."]`, `src/mypkg/x.py` has id `mypkg.x` and `tests/test_x.py` has id `tests.test_x`.
 - [C] Shadowed modules: when two files map to the same id, the file under the EARLIER root in the roots list wins (like Python's `sys.path` order). Example: with roots `["src", "."]`, `src/app/x.py` wins over `app/x.py`. The other file is not added to `modules` and is not analysed. It goes into `errors` as `{file, line: null, type: "ShadowedModule"}`.
-- [A] Within one root, a package's `__init__.py` wins over a module file with the same id (`app/auth/__init__.py` over `app/auth.py`), as in Python's import system. The module file is reported as `ShadowedModule`.
+- [C] Within one root, a package's `__init__.py` wins over a module file with the same id (`app/auth/__init__.py` over `app/auth.py`), as in Python's import system. The module file is reported as `ShadowedModule`.
 - [C] Folders and files whose names are not valid Python identifiers (for example `my-scripts/run.py`) are still scanned. Their module id uses the path parts as they are (`my-scripts.run`). Nothing can import them, which is fine.
 - [C] `Edge.source` and `Edge.target` are module ids. For `stdlib`, `external` and `unresolved` targets, there is no local module to point to, so the target is the dotted name from the import (see section 7 for from-imports).
 - [C] `Evidence.file` is the repo-relative POSIX path of the importing file.
