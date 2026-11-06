@@ -12,6 +12,7 @@ The work is split into two separate steps (SPEC.md section 6):
 
 from __future__ import annotations
 
+from collections.abc import Set
 from functools import lru_cache
 
 from repolens.model import ImportClass, Module
@@ -20,7 +21,7 @@ from repolens.python.stdlib_names import STDLIB_NAMES
 
 def resolve(importer: Module, module: str | None,
             names: list[str], level: int,
-            known_modules: set[str]) -> list[tuple[str, ImportClass]]:
+            known_modules: Set[str]) -> list[tuple[str, ImportClass]]:
     """Resolve one import and classify every target it produces.
 
     Parameters
@@ -46,8 +47,9 @@ def resolve(importer: Module, module: str | None,
         The ids of all modules in the repository, already relative to their
         source root (src/mypkg/x.py has id "mypkg.x"). Every id is backed by
         a real .py file. A namespace package (a folder without __init__.py)
-        has no id of its own in this set. A frozenset is also accepted; the
-        analyzer passes one because it is faster (see _local_names).
+        has no id of its own in this set. The type is collections.abc.Set,
+        so both a set and a frozenset are correct (D49). The analyzer passes
+        a frozenset because it is faster (see _local_names).
 
     Returns
     -------

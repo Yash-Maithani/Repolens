@@ -106,6 +106,7 @@ Every requirement has a label:
 - [C] A call with a non-literal argument, such as `importlib.import_module(name)`, produces an Observation, never an Edge.
 - [C] A relative dynamic import, such as `importlib.import_module(".x", package=__name__)`, produces an Observation with reason `relative dynamic import`. No edge in v1.
 - [C] Edges that are identical in every field are removed, so each appears once.
+- [C] The resolver's signature is `resolve(importer: Module, module: str | None, names: list[str], level: int, known_modules: collections.abc.Set[str]) -> list[tuple[str, ImportClass]]`. `known_modules` may be a `set` or a `frozenset`.
 
 ## 8. JSON output v2
 

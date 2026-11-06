@@ -6,7 +6,7 @@ scanner.py, roots.py, extractor.py and resolver.py.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Set
 from pathlib import Path
 
 from repolens.graph import find_cycles
@@ -21,14 +21,14 @@ SHADOWED_MODULE = "ShadowedModule"
 
 # The shape of resolver.resolve: (importer, module, names, level, known_modules).
 ResolveFunction = Callable[
-    [Module, str | None, list[str], int, set[str]], list[tuple[str, ImportClass]]
+    [Module, str | None, list[str], int, Set[str]], list[tuple[str, ImportClass]]
 ]
 
 
 def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanResult:
     """Scan the Python project at repo_root.
 
-    resolve_fn lets tests use a stand-in resolver. By default the owner's
+    resolve_fn lets tests use a stand-in resolver. By default the real
     resolver.resolve is used, looked up at call time.
     """
     if resolve_fn is None:
