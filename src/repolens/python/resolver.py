@@ -69,7 +69,12 @@ def resolve(importer: Module, module: str | None,
       whether `path` is a submodule without checking the environment.
     - Namespace packages (folders without __init__.py) count as packages.
     - Roots: the ids in known_modules are already root-relative, so a plain
-      dotted lookup works for both the flat and the src layout.
+      dotted lookup works for both the flat and the src layout. Shadowed
+      files (D33) are already removed: each id in known_modules belongs to
+      exactly one file.
+    - src as a package: if src/__init__.py exists, src is a normal package
+      and the roots are ["."]. Then ids start with "src." and
+      `from src.app import x` resolves against "src.app" (D35).
     - For STDLIB, EXTERNAL and UNRESOLVED results, the target is the dotted
       name from the import (module part only for from-imports).
 

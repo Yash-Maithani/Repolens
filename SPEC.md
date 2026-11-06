@@ -46,7 +46,7 @@ Every requirement has a label:
 | --- | --- | --- |
 | 0 | Success. This includes a scan where some files had errors (they are listed in `errors`). | [C] |
 | 1 | Rule violations found. Used from Phase 5. | [F] |
-| 2 | Bad path, bad arguments, or the `-o` file cannot be written. A clear message goes to stderr. | [C] |
+| 2 | Bad path, bad arguments, or the `-o` file cannot be written. A clear message goes to stderr. The `-o` folder is checked BEFORE the scan starts, so a bad `-o` fails fast. | [C] |
 
 ## 5. Data model
 
@@ -68,6 +68,8 @@ Every requirement has a label:
 - [C] `path` is repo-relative and uses POSIX `/` separators.
 - [C] A package's `__init__.py` gets the package's id. Example: `app/auth/__init__.py` has id `app.auth`.
 - [C] Module ids are relative to a source root. A file's id comes from the LONGEST root that contains it. Example: with roots `["src", "."]`, `src/mypkg/x.py` has id `mypkg.x` and `tests/test_x.py` has id `tests.test_x`.
+- [C] Shadowed modules: when two files map to the same id, the file under the EARLIER root in the roots list wins (like Python's `sys.path` order). Example: with roots `["src", "."]`, `src/app/x.py` wins over `app/x.py`. The other file is not added to `modules` and is not analysed. It goes into `errors` as `{file, line: null, type: "ShadowedModule"}`.
+- [A] Within one root, a package's `__init__.py` wins over a module file with the same id (`app/auth/__init__.py` over `app/auth.py`), as in Python's import system. The module file is reported as `ShadowedModule`.
 - [C] Folders and files whose names are not valid Python identifiers (for example `my-scripts/run.py`) are still scanned. Their module id uses the path parts as they are (`my-scripts.run`). Nothing can import them, which is fine.
 - [C] `Edge.source` and `Edge.target` are module ids. For `stdlib`, `external` and `unresolved` targets, there is no local module to point to, so the target is the dotted name from the import (see section 7 for from-imports).
 - [C] `Evidence.file` is the repo-relative POSIX path of the importing file.
@@ -91,7 +93,8 @@ Every requirement has a label:
 
 ## 7. Python resolution rules
 
-- [C] Source roots: roots = `["src", "."]` if `./src` holds packages or `.py` files, else `["."]`. The order matters: absolute imports try the roots in list order.
+- [C] Source roots: roots = `["src", "."]` if `./src` holds packages or `.py` files AND `src/__init__.py` does not exist, else `["."]`. The order matters: absolute imports try the roots in list order.
+- [C] If `src/__init__.py` exists, `src` is a normal package, not a source root. Roots are `["."]`, so `from src.app import x` resolves against `src.app`.
 - [C] Every `.py` file in the repository is scanned, including files outside `src/`.
 - [C] Absolute imports: `import a.b.c` resolves to the module `a.b.c`.
 - [C] Relative imports use the `level` (number of leading dots) to move up from the importer's package.
@@ -112,7 +115,8 @@ Every requirement has a label:
 - [C] `modules` are sorted by `id`.
 - [C] `edges` are sorted by `(source, target, kind, evidence.line)`.
 - [C] `observations` are sorted by `(file, line, reason)`.
-- [C] Each entry in `errors` has `file`, `line` (or null) and `type` (for example `SyntaxError` or `UnicodeDecodeError`). The error message is never stored, because it changes between Python versions. Errors are sorted by `(file, line, type)`.
+- [C] Each entry in `errors` has `file`, `line` (or null) and `type` (for example `SyntaxError`, `UnicodeDecodeError` or `ShadowedModule`). The error message is never stored, because it changes between Python versions. Errors are sorted by `(file, line, type)`.
+- [C] No string value in the output contains a backslash. This is checked on the decoded JSON values: in the raw JSON text, a double quote inside evidence text is written as `\"`, and that backslash is only JSON escaping.
 - [C] The text is produced with `json.dumps(sort_keys=True, indent=2, ensure_ascii=False)` plus a trailing newline.
 
 ### Example
@@ -214,8 +218,10 @@ Keys appear in alphabetical order because of `sort_keys=True`.
 ### Scanner, roots, extractor, stdlib list and output
 
 - Scanner: ignored folders are skipped; paths are POSIX and relative; paths are sorted.
-- Roots: a flat project gives `["."]`; a src project gives `["src", "."]`.
+- Roots: a flat project gives `["."]`; a src project gives `["src", "."]`; a project with `src/__init__.py` gives `["."]`.
 - Module ids: `src/mypkg/x.py` -> `mypkg.x` and `tests/test_x.py` -> `tests.test_x` (longest root wins).
+- Shadowed modules: with `src/app/x.py` and `app/x.py`, only `src/app/x.py` is a module; `app/x.py` is a `ShadowedModule` error.
+- CLI: a bad `-o` folder exits 2 before the scan starts.
 - Extractor:
   - absolute import
   - `from` import
@@ -226,7 +232,7 @@ Keys appear in alphabetical order because of `sort_keys=True`.
   - non-literal `importlib.import_module` gives an Observation
   - a file with a syntax error goes into the errors list, and the scan continues
 - Stdlib list: `set(sys.stdlib_module_names)` is a subset of the frozen list.
-- Output: scanning the same fixture twice gives byte-identical output; no backslashes; no absolute paths.
+- Output: scanning the same fixture twice gives byte-identical output; no backslashes in any decoded string value; no absolute paths.
 
 ### Resolver (these fail until the owner writes `resolve()`)
 
@@ -242,7 +248,14 @@ Keys appear in alphabetical order because of `sort_keys=True`.
 - `import os` -> stdlib
 - `import requests` -> external
 - `import app.missing` when `app` is local -> unresolved
+- with `src/__init__.py`, `from src.app import x` (x is a name, not a module) -> `src.app`
 
 ## 11. Open questions
 
-None open. All earlier questions were answered by the owner and are logged in PROGRESS.md (D7 to D19).
+1. Section 5: within one root, should a package's `__init__.py` win over a module file with the same id? This is implemented as an assumption [A] (D34) and needs owner approval.
+
+All other earlier questions were answered by the owner and are logged in PROGRESS.md (D7 to D19, D32 to D38).
+
+## 12. Known limitations
+
+- [C] SyntaxError line numbers can differ between Python versions for some errors, because the Python parser keeps improving its error reporting. `errors[].line` for a `SyntaxError` is therefore not fully version-independent. The test uses a simple case where all supported versions agree.

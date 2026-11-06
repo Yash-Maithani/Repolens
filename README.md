@@ -21,6 +21,10 @@ This will write a JSON file that lists the project's modules and the imports bet
 - Static imports only. Dynamic imports such as `importlib.import_module(...)` are recorded separately and are never treated like normal imports.
 - No cloud service and no account. Everything runs locally.
 
+## Known limitations
+
+- For a file with a syntax error, the reported line number can differ between Python versions, because newer versions of Python report some syntax errors on a different line.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
