@@ -37,12 +37,9 @@ The owner is learning while building. Act as a pair programmer and teacher, not 
 - When asked, explain any file line by line for a beginner.
 - Never make an architecture, dependency or security decision silently. Give the options and their trade-offs, recommend one, then wait for the owner.
 
-## Owner-written code
+## Resolver
 
-`src/repolens/python/resolver.py` is written by the owner.
-
-- Never implement, rewrite or "fix" its logic.
-- You may explain concepts, point at a failing test, or give a hint, but ONLY when the owner asks.
+resolver.py was written by the agent at the owner's request (see D39). Explain any change to it in plain language.
 
 ## Non-negotiable requirements
 

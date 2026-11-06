@@ -31,7 +31,7 @@ Note: CI will fail on the resolver tests until the owner writes `resolve()`. Thi
 | D3 | Local resolution wins over stdlib names. | A project file such as `logging.py` shadows the stdlib module at runtime, so the project file is the real dependency. |
 | D4 | Source roots are `["src"]` if `./src` holds packages or `.py` files, else `["."]`. Replaced by D9. | Supports both the src layout and the flat layout with one simple rule. |
 | D5 | MIT license. | Simple, permissive and widely understood. |
-| D6 | The owner writes `src/repolens/python/resolver.py`. | The resolver is the core learning goal of Phase 1. |
+| D6 | The owner writes `src/repolens/python/resolver.py`. Replaced by D39. | The resolver is the core learning goal of Phase 1. |
 | D7 | Classification order is local -> unresolved -> stdlib -> external. A local top-level name can only give local or unresolved. | Matches real Python, where a local package shadows the stdlib one. Fixes the `logging.handlers` case. |
 | D8 | The stdlib list is frozen in `stdlib_names.py`: the union of Python 3.10 to 3.13. A test checks `sys.stdlib_module_names` is a subset. CI runs Python 3.10, 3.11, 3.12 and 3.13. | The output must not change with the Python version that runs RepoLens. |
 | D9 | Roots are `["src", "."]` when `./src` qualifies, else `["."]`. Every `.py` file is scanned. A module id comes from the longest root that contains the file. Absolute imports try roots in list order. | Files outside `src/` (tests, scripts) are part of the project and need ids. |
@@ -64,6 +64,7 @@ Note: CI will fail on the resolver tests until the owner writes `resolve()`. Thi
 | D36 | Owner decision: the CLI checks the `-o` parent folder before scanning and exits 2 if it does not exist. I also added an exit 2 when `-o` points at an existing folder. A write error after the scan is still exit 2. | A typo in `-o` should not cost a full scan. |
 | D37 | Owner decision: SyntaxError line numbers can differ between Python versions. Accepted as a known limitation (SPEC.md section 12, README.md). The test keeps a simple case. | The Python parser keeps improving its error positions. |
 | D38 | Owner decision: `.gitattributes` with `* text=auto eol=lf`. Renormalizing changed no files (the index was already LF). | Fixtures and expected JSON must have LF on every machine, including Windows CI checkouts. |
+| D39 | Owner decision: the agent writes `resolve()` instead of the owner. Replaces D6. The owner will study it through `docs/how-it-works.md`. | Saves credits. The learning goal moves to reading and explaining the code. |
 
 ## Verification log
 
