@@ -1,0 +1,62 @@
+{
+  "edges": [
+    {
+      "classification": "stdlib",
+      "evidence": {
+        "file": "app/repo.py",
+        "line": 1,
+        "text": "import sqlite3"
+      },
+      "kind": "import",
+      "source": "app.repo",
+      "target": "sqlite3"
+    },
+    {
+      "classification": "local",
+      "evidence": {
+        "file": "app/service.py",
+        "line": 2,
+        "text": "from app import repo"
+      },
+      "kind": "import",
+      "source": "app.service",
+      "target": "app.repo"
+    },
+    {
+      "classification": "stdlib",
+      "evidence": {
+        "file": "app/service.py",
+        "line": 1,
+        "text": "import os"
+      },
+      "kind": "import",
+      "source": "app.service",
+      "target": "os"
+    }
+  ],
+  "errors": [],
+  "language_roots": {
+    "python": [
+      "."
+    ]
+  },
+  "modules": [
+    {
+      "id": "app",
+      "language": "python",
+      "path": "app/__init__.py"
+    },
+    {
+      "id": "app.repo",
+      "language": "python",
+      "path": "app/repo.py"
+    },
+    {
+      "id": "app.service",
+      "language": "python",
+      "path": "app/service.py"
+    }
+  ],
+  "observations": [],
+  "schema_version": 1
+}
