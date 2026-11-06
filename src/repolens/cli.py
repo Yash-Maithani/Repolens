@@ -41,6 +41,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"repolens: error: not a folder: {args.path}", file=sys.stderr)
         return EXIT_USAGE
 
+    # Fail fast (D36): check the output location BEFORE the scan, so a typo
+    # in -o does not cost a full scan. The write below can still fail (for
+    # example no permission), and that is also exit 2.
+    if args.output:
+        output = Path(args.output)
+        if not output.parent.is_dir():
+            print(
+                f"repolens: error: cannot write {args.output}: folder does not exist",
+                file=sys.stderr,
+            )
+            return EXIT_USAGE
+        if output.is_dir():
+            print(f"repolens: error: cannot write {args.output}: it is a folder", file=sys.stderr)
+            return EXIT_USAGE
+
     # Encode to UTF-8 bytes ourselves. Writing text would let Windows turn
     # "\n" into "\r\n" and use a non-UTF-8 console encoding, so the output
     # would differ between machines.

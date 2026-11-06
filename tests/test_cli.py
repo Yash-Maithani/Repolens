@@ -54,6 +54,25 @@ def test_unwritable_output_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture
     assert "cannot write" in capsys.readouterr().err
 
 
+def test_bad_output_folder_fails_before_scanning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def must_not_run(*args: object) -> list:
+        raise AssertionError("the scan ran before the -o check")
+
+    monkeypatch.setattr(resolver, "resolve", must_not_run)
+    target = tmp_path / "missing-folder" / "graph.json"
+    assert cli.main(["scan", str(PROJECT), "-o", str(target)]) == 2
+    assert "folder does not exist" in capsys.readouterr().err
+
+
+def test_output_that_is_a_folder_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan", str(PROJECT), "-o", str(tmp_path)]) == 2
+    assert "it is a folder" in capsys.readouterr().err
+
+
 def test_no_command_exits_2(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main([]) == 2
 
