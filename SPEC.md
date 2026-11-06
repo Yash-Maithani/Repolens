@@ -252,9 +252,7 @@ Keys appear in alphabetical order because of `sort_keys=True`.
 
 ## 11. Open questions
 
-1. Section 5: within one root, should a package's `__init__.py` win over a module file with the same id? This is implemented as an assumption [A] (D34) and needs owner approval.
-
-All other earlier questions were answered by the owner and are logged in PROGRESS.md (D7 to D19, D32 to D38).
+None open. All earlier questions were answered by the owner and are logged in PROGRESS.md (D7 to D19, D32 to D38).
 
 ## 12. Known limitations
 
