@@ -6,15 +6,15 @@ Status words: Planned, In progress, Implemented, Tested, Released.
 
 Phase 1: Scanner, Python AST imports and resolution, deterministic JSON.
 
-Status: In progress
+Status: Tested
 
-Note: CI will fail on the resolver tests until the owner writes `resolve()`. This is expected and accepted. The owner will not open the Phase 1 pull request until the resolver passes.
+Note: `resolve()` is implemented (D39) and all tests pass.
 
 ## Phase status
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
-| 1 | Scanner, Python AST imports and resolution, deterministic JSON | In progress |
+| 1 | Scanner, Python AST imports and resolution, deterministic JSON | Tested |
 | 2 | Dependency graph and cycle detection | Planned |
 | 3 | Java with Tree-sitter, including same-package references | Planned |
 | 4 | YAML layers and architecture rules | Planned |
@@ -65,6 +65,9 @@ Note: CI will fail on the resolver tests until the owner writes `resolve()`. Thi
 | D37 | Owner decision: SyntaxError line numbers can differ between Python versions. Accepted as a known limitation (SPEC.md section 12, README.md). The test keeps a simple case. | The Python parser keeps improving its error positions. |
 | D38 | Owner decision: `.gitattributes` with `* text=auto eol=lf`. Renormalizing changed no files (the index was already LF). | Fixtures and expected JSON must have LF on every machine, including Windows CI checkouts. |
 | D39 | Owner decision: the agent writes `resolve()` instead of the owner. Replaces D6. The owner will study it through `docs/how-it-works.md`. | Saves credits. The learning goal moves to reading and explaining the code. |
+| D40 | The resolver treats every module id AND every package above it as a local name (`app.core.db` also makes `app` and `app.core` local). This set is built once per scan: the analyzer passes `known_modules` as a frozenset and the resolver caches the result with `functools.lru_cache`. | This is how namespace packages count as packages. Without the cache, the set would be rebuilt for every import. |
+| D41 | A relative import whose dots reach the root itself, not only above it, is unresolved (for example `from .. import x` in `app/service.py`, or `from . import x` in a top-level `main.py`). The target is the import as written, for example `..x`. | Python raises "attempted relative import beyond top-level package" in these cases, because the root is not a package. |
+| D42 | A from-import with several names returns one pair per distinct target, in the order of the names. Repeats (for example two names that are both not modules) appear once. | Avoids duplicate pairs before the analyzer's own duplicate removal. |
 
 ## Verification log
 
@@ -72,3 +75,5 @@ Note: CI will fail on the resolver tests until the owner writes `resolve()`. Thi
 | --- | --- | --- |
 | 2026-11-06 | `pytest -q` (Python 3.11.9, Windows) | 49 passed, 20 failed. All 20 failures are in `tests/test_resolver.py` and are the `NotImplementedError` from the resolver stub (expected, D11). |
 | 2026-11-06 | `pytest -q` (Python 3.11.9, Windows), after D32 to D38 | 54 passed, 21 failed. All 21 failures are in `tests/test_resolver.py` and are the `NotImplementedError` from the resolver stub (expected, D11). |
+| 2026-11-06 | `pytest -q` (Python 3.11.9, Windows), after implementing `resolve()` | 75 passed. No test was changed. |
+| 2026-11-06 | `repolens scan .` on this repository | Exit 0. 38 modules, 99 edges (50 stdlib, 32 local, 17 external), 0 unresolved. 1 error (the intentionally broken fixture) and 2 observations (the dynamic-import fixtures). |

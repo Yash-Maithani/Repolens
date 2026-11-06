@@ -36,7 +36,8 @@ def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanR
     files = scan_python_files(repo_root)
     roots = detect_roots(files)
     modules, errors = _pick_modules(files, roots)
-    known_modules = {module.id for module in modules}
+    # A frozenset, so the resolver can cache work it derives from it (D40).
+    known_modules = frozenset(module.id for module in modules)
 
     edges: set[Edge] = set()  # a set removes exact duplicates (D13)
     observations: list[Observation] = []
