@@ -4,15 +4,62 @@ RepoLens is a command-line tool that reads the source code of a Python or Java p
 
 ## Status
 
-Early development, Phase 1. Not usable yet.
+Early development. Phases 1 and 2 work: scan Python projects to JSON and report import cycles. Not stable yet.
 
-## Planned usage
+## Usage
+
+RepoLens is not on PyPI yet. Install it from a clone of this repository (Python 3.10 or newer):
 
 ```bash
-repolens scan path/to/project -o graph.json
+pip install -e .
 ```
 
-This will write a JSON file that lists the project's modules and the imports between them.
+Scan the project in the current folder and write the result to `graph.json`:
+
+```bash
+repolens scan . -o graph.json
+```
+
+Use `--exclude` (repeatable) to skip files, for example sample projects inside your tests. Patterns are matched against the path with `/` separators, and `*` also matches `/`:
+
+```bash
+repolens scan . -o graph.json --exclude "tests/fixtures/*"
+```
+
+The JSON lists the modules, every import with the file and line it came from (`edges`), and the import cycles. This is a real excerpt from scanning a small project where `app.a` imports `app.b`, `app.b` imports `app.c`, and `app.c` imports `app.a`:
+
+```text
+{
+  "cycles": [
+    {
+      "edges": [
+        {
+          "classification": "local",
+          "evidence": {
+            "file": "app/a.py",
+            "line": 1,
+            "text": "from app import b"
+          },
+          "kind": "import",
+          "source": "app.a",
+          "target": "app.b"
+        },
+        ... (app.b -> app.c and app.c -> app.a)
+      ],
+      "modules": [
+        "app.a",
+        "app.b",
+        "app.c"
+      ]
+    }
+  ],
+  "edges": [ ... ],
+  ...
+  "schema_version": 2
+}
+```
+
+Each import is classified as `local`, `stdlib`, `external` or `unresolved`. Only local imports can form a cycle.
 
 ## What RepoLens will not do
 
@@ -24,6 +71,8 @@ This will write a JSON file that lists the project's modules and the imports bet
 ## Known limitations
 
 - For a file with a syntax error, the reported line number can differ between Python versions, because newer versions of Python report some syntax errors on a different line.
+- Test helper imports that rely on pytest's `sys.path` (for example `from helpers import x` inside `tests/`) show as `external`, because RepoLens only sees the source roots, not the paths pytest adds at run time.
+- Only Python is supported so far. Java is planned for Phase 3.
 
 ## License
 
