@@ -75,6 +75,8 @@ Note: Phase 1 is also Tested: `resolve()` is implemented (D39) and all tests pas
 | D47 | `Cycle` is a new frozen dataclass in `model.py`, and `ScanResult` gets a `cycles` field. The edge sort key moved from `output.py` to `model.py` (`edge_sort_key`) so `graph.py` and `output.py` share one definition. | One sort order for edges everywhere. |
 | D48 | The expected JSON for the SPEC example (`tests/fixtures/expected/flat_project.json`) and the top-level-key test in `tests/test_output.py` were updated for schema version 2. No other test was changed. | Required by D45: they check the exact output format. |
 | D49 | Owner decision: `resolve()` types `known_modules` as `collections.abc.Set[str]` instead of `set[str]`. | The analyzer passes a frozenset (D40). `Set` is the read-only set type that both `set` and `frozenset` satisfy, so a type checker accepts both. |
+| D50 | Owner decision: `scan --exclude PATTERN`, repeatable, matched with fnmatch against the repo-relative POSIX path. `*` also matches `/`. Excluded files are not modules. | Lets users skip nested sample projects such as `tests/fixtures`. |
+| D51 | Exclusion uses `fnmatch.fnmatchcase` (case-sensitive everywhere), and runs right after the file walk, before source root detection. So `--exclude "src/*"` also stops `src` from being a root. | `fnmatch.fnmatch` ignores case on Windows only, which would make output depend on the machine. Excluding first means excluded files have no effect at all. |
 
 ## Verification log
 

@@ -28,10 +28,11 @@ Every requirement has a label:
 
 ### Phase 1
 
-- [C] `repolens scan <path> [-o FILE]`
+- [C] `repolens scan <path> [-o FILE] [--exclude PATTERN]...`
   - Scans the project at `<path>` and writes the JSON output (section 8).
   - Without `-o`, the JSON goes to standard output.
   - With `-o FILE`, the JSON goes to FILE.
+  - `--exclude PATTERN` can be given many times. A `.py` file is skipped if its repo-relative POSIX path matches any pattern, using `fnmatch` rules with case-sensitive matching on every machine. `*` also matches `/`, so `--exclude "tests/fixtures/*"` skips everything below `tests/fixtures`. Excluded files are not modules: they are removed before source roots are detected and are never read. The same inputs (files and patterns, in any order) always give byte-identical output.
 
 ### Future
 

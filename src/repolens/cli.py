@@ -1,4 +1,4 @@
-"""Command-line interface: `repolens scan <path> [-o FILE]` (SPEC.md section 4).
+"""Command-line interface: `repolens scan <path> [-o FILE] [--exclude PATTERN]...` (SPEC.md section 4).
 
 Exit codes: 0 success (even if some files had errors), 2 bad path, bad
 arguments, or an output file that cannot be written.
@@ -26,6 +26,17 @@ def build_parser() -> argparse.ArgumentParser:
     scan = commands.add_parser("scan", help="scan a project and write its import graph as JSON")
     scan.add_argument("path", help="folder of the project to scan")
     scan.add_argument("-o", "--output", metavar="FILE", help="write JSON to FILE instead of stdout")
+    scan.add_argument(
+        "--exclude",
+        metavar="PATTERN",
+        action="append",  # repeatable: each --exclude adds one pattern to a list
+        default=[],
+        help=(
+            "skip .py files whose repo-relative path (with / separators) matches "
+            "PATTERN (fnmatch rules; '*' also matches '/'). Repeatable. "
+            "Example: --exclude 'tests/fixtures/*'"
+        ),
+    )
     return parser
 
 
@@ -59,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     # Encode to UTF-8 bytes ourselves. Writing text would let Windows turn
     # "\n" into "\r\n" and use a non-UTF-8 console encoding, so the output
     # would differ between machines.
-    data = to_json(analyze(repo_root)).encode("utf-8")
+    data = to_json(analyze(repo_root, exclude=args.exclude)).encode("utf-8")
 
     if args.output:
         try:

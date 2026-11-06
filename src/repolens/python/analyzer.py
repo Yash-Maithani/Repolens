@@ -6,7 +6,7 @@ scanner.py, roots.py, extractor.py and resolver.py.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Set
+from collections.abc import Callable, Iterable, Set
 from pathlib import Path
 
 from repolens.graph import find_cycles
@@ -14,7 +14,7 @@ from repolens.model import Edge, FileError, ImportClass, Module, Observation, Sc
 from repolens.python import resolver
 from repolens.python.extractor import extract_file
 from repolens.python.roots import detect_roots, locate
-from repolens.scanner import scan_python_files
+from repolens.scanner import remove_excluded, scan_python_files
 
 LANGUAGE = "python"
 SHADOWED_MODULE = "ShadowedModule"
@@ -25,8 +25,16 @@ ResolveFunction = Callable[
 ]
 
 
-def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanResult:
+def analyze(
+    repo_root: Path,
+    resolve_fn: ResolveFunction | None = None,
+    exclude: Iterable[str] = (),
+) -> ScanResult:
     """Scan the Python project at repo_root.
+
+    exclude holds --exclude patterns (see scanner.remove_excluded). Excluded
+    files are removed BEFORE anything else, so they are not modules, do not
+    affect root detection, and are never read.
 
     resolve_fn lets tests use a stand-in resolver. By default the real
     resolver.resolve is used, looked up at call time.
@@ -34,7 +42,7 @@ def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanR
     if resolve_fn is None:
         resolve_fn = resolver.resolve
 
-    files = scan_python_files(repo_root)
+    files = remove_excluded(scan_python_files(repo_root), exclude)
     roots = detect_roots(files)
     modules, errors = _pick_modules(files, roots)
     # A frozenset, so the resolver can cache work it derives from it (D40).
