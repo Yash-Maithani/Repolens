@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from repolens.graph import find_cycles
 from repolens.model import Edge, FileError, ImportClass, Module, Observation, ScanResult
 from repolens.python import resolver
 from repolens.python.extractor import extract_file
@@ -59,6 +60,8 @@ def analyze(repo_root: Path, resolve_fn: ResolveFunction | None = None) -> ScanR
         edges=list(edges),
         observations=observations,
         errors=errors,
+        # Phase 2: the language-neutral graph step (D46).
+        cycles=find_cycles(edges),
     )
 
 

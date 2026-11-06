@@ -107,16 +107,19 @@ Every requirement has a label:
 - [C] A relative dynamic import, such as `importlib.import_module(".x", package=__name__)`, produces an Observation with reason `relative dynamic import`. No edge in v1.
 - [C] Edges that are identical in every field are removed, so each appears once.
 
-## 8. JSON output v1
+## 8. JSON output v2
 
-- [C] Top-level keys: `schema_version`, `language_roots`, `modules`, `edges`, `observations`, `errors`.
-- [C] `schema_version` is the integer `1`.
+- [C] Top-level keys: `schema_version`, `language_roots`, `modules`, `edges`, `observations`, `errors`, `cycles`.
+- [C] `schema_version` is the integer `2`. Version 1 had no `cycles` key.
 - [C] `language_roots` maps a language to its list of roots in resolution order, for example `{"python": ["src", "."]}`.
 - [C] `modules` are sorted by `id`.
 - [C] `edges` are sorted by `(source, target, kind, evidence.line)`.
 - [C] `observations` are sorted by `(file, line, reason)`.
 - [C] Each entry in `errors` has `file`, `line` (or null) and `type` (for example `SyntaxError`, `UnicodeDecodeError` or `ShadowedModule`). The error message is never stored, because it changes between Python versions. Errors are sorted by `(file, line, type)`.
 - [C] No string value in the output contains a backslash. This is checked on the decoded JSON values: in the raw JSON text, a double quote inside evidence text is written as `\"`, and that backslash is only JSON escaping.
+- [C] Graph (Phase 2): a directed graph built only from edges with classification `local` and kind `import` or `same_package`. Dynamic, stdlib, external and unresolved edges are never part of it, because a cycle is an architecture rule and only resolved dependencies count for rules.
+- [C] Cycle: a strongly connected component of that graph with more than one module, or a single module that imports itself. Components are found with Tarjan's algorithm, written iteratively (no recursion) so large repositories cannot hit Python's recursion limit.
+- [C] Each entry in `cycles` is `{"modules": [...], "edges": [...]}`: the sorted module ids of the cycle, and the graph edges whose source and target are both in the cycle, sorted like `edges`. The `cycles` list is sorted by each cycle's first module id.
 - [C] The text is produced with `json.dumps(sort_keys=True, indent=2, ensure_ascii=False)` plus a trailing newline.
 
 ### Example
@@ -134,6 +137,7 @@ Output of `repolens scan .`:
 
 ```json
 {
+  "cycles": [],
   "edges": [
     {
       "classification": "stdlib",
@@ -193,7 +197,7 @@ Output of `repolens scan .`:
     }
   ],
   "observations": [],
-  "schema_version": 1
+  "schema_version": 2
 }
 ```
 
@@ -204,7 +208,7 @@ Keys appear in alphabetical order because of `sort_keys=True`.
 | Phase | Deliverable | Label |
 | --- | --- | --- |
 | 1 | Scanner, Python AST imports and resolution, deterministic JSON | [C] |
-| 2 | Dependency graph and cycle detection | [F] |
+| 2 | Dependency graph and cycle detection | [C] |
 | 3 | Java with Tree-sitter, including same-package references | [F] |
 | 4 | YAML layers and architecture rules | [F] |
 | 5 | `check` command, baseline with fingerprints (rule + source + target + edge kind, never line numbers), GitHub Action | [F] |
@@ -249,6 +253,20 @@ Keys appear in alphabetical order because of `sort_keys=True`.
 - `import requests` -> external
 - `import app.missing` when `app` is local -> unresolved
 - with `src/__init__.py`, `from src.app import x` (x is a name, not a module) -> `src.app`
+
+## 10b. Phase 2 acceptance criteria
+
+[C] Phase 2 is done when all of these tests in `tests/test_graph.py` pass:
+
+- no cycle in a -> b -> c
+- simple cycle a -> b -> c -> a
+- self-import a -> a
+- two separate cycles reported separately, in sorted order
+- a dynamic edge never creates a cycle
+- an unresolved, stdlib or external edge never creates a cycle
+- a 5000-module chain finishes without RecursionError
+- scanning twice gives byte-identical JSON including cycles
+- one fixture project with a real cycle, end to end through the CLI
 
 ## 11. Open questions
 

@@ -4,18 +4,18 @@ Status words: Planned, In progress, Implemented, Tested, Released.
 
 ## Current milestone
 
-Phase 1: Scanner, Python AST imports and resolution, deterministic JSON.
+Phase 2: Dependency graph and cycle detection.
 
 Status: Tested
 
-Note: `resolve()` is implemented (D39) and all tests pass.
+Note: Phase 1 is also Tested: `resolve()` is implemented (D39) and all tests pass.
 
 ## Phase status
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Scanner, Python AST imports and resolution, deterministic JSON | Tested |
-| 2 | Dependency graph and cycle detection | Planned |
+| 2 | Dependency graph and cycle detection | Tested |
 | 3 | Java with Tree-sitter, including same-package references | Planned |
 | 4 | YAML layers and architecture rules | Planned |
 | 5 | `check` command, baseline with fingerprints, GitHub Action | Planned |
@@ -68,6 +68,12 @@ Note: `resolve()` is implemented (D39) and all tests pass.
 | D40 | The resolver treats every module id AND every package above it as a local name (`app.core.db` also makes `app` and `app.core` local). This set is built once per scan: the analyzer passes `known_modules` as a frozenset and the resolver caches the result with `functools.lru_cache`. | This is how namespace packages count as packages. Without the cache, the set would be rebuilt for every import. |
 | D41 | A relative import whose dots reach the root itself, not only above it, is unresolved (for example `from .. import x` in `app/service.py`, or `from . import x` in a top-level `main.py`). The target is the import as written, for example `..x`. | Python raises "attempted relative import beyond top-level package" in these cases, because the root is not a package. |
 | D42 | A from-import with several names returns one pair per distinct target, in the order of the names. Repeats (for example two names that are both not modules) appear once. | Avoids duplicate pairs before the analyzer's own duplicate removal. |
+| D43 | Owner decision: the graph uses only edges with classification `local` and kind `import` or `same_package`. Its nodes are the modules that appear in those edges. | Only resolved dependencies count for rules, and a cycle is a rule. A module with no counted edge can never be in a cycle. |
+| D44 | Owner decision: a cycle is an SCC with more than one module, or one module that imports itself. SCCs are found with Tarjan's algorithm, written with an explicit stack (no recursion). Neighbours are visited in sorted order. | A recursive version fails near 1000 nested calls. Sorted order makes the walk deterministic. |
+| D45 | Owner decision: JSON schema version 2 adds a top-level `cycles` key. Each cycle is `{"modules": [sorted ids], "edges": [counted edges inside the cycle, sorted like edges]}`. Cycles are sorted by their first module id. | Deterministic, and the edges show exactly which imports form the loop. |
+| D46 | Cycles are computed at the end of the Python analyzer for now. `graph.py` itself only takes Edge objects, so in Phase 3 it can run once on Python and Java edges together. | Smallest change today, no lock-in for Phase 3. |
+| D47 | `Cycle` is a new frozen dataclass in `model.py`, and `ScanResult` gets a `cycles` field. The edge sort key moved from `output.py` to `model.py` (`edge_sort_key`) so `graph.py` and `output.py` share one definition. | One sort order for edges everywhere. |
+| D48 | The expected JSON for the SPEC example (`tests/fixtures/expected/flat_project.json`) and the top-level-key test in `tests/test_output.py` were updated for schema version 2. No other test was changed. | Required by D45: they check the exact output format. |
 
 ## Verification log
 
@@ -77,3 +83,6 @@ Note: `resolve()` is implemented (D39) and all tests pass.
 | 2026-11-06 | `pytest -q` (Python 3.11.9, Windows), after D32 to D38 | 54 passed, 21 failed. All 21 failures are in `tests/test_resolver.py` and are the `NotImplementedError` from the resolver stub (expected, D11). |
 | 2026-11-06 | `pytest -q` (Python 3.11.9, Windows), after implementing `resolve()` | 75 passed. No test was changed. |
 | 2026-11-06 | `repolens scan .` on this repository | Exit 0. 38 modules, 99 edges (50 stdlib, 32 local, 17 external), 0 unresolved. 1 error (the intentionally broken fixture) and 2 observations (the dynamic-import fixtures). |
+| 2026-11-06 | `pytest -q` (Python 3.11.9, Windows), after Phase 2 | 89 passed. The 5000-module chain and ring tests take about 0.03 s each. |
+| 2026-11-06 | Tarjan cross-check (scratch script, not committed): 500 random graphs compared with a brute-force reachability method | All 500 matched. |
+| 2026-11-06 | `repolens scan .` on this repository, schema 2 | Exit 0. 45 modules, 120 edges, 0 cycles. |

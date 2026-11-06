@@ -57,6 +57,23 @@ class Edge:
     evidence: Evidence
 
 
+def edge_sort_key(edge: Edge) -> tuple:
+    """The one sort order for edges, used by graph.py and output.py.
+
+    It starts with the SPEC.md order (source, target, kind, evidence.line);
+    the remaining fields only break ties, so the order is always total (D27).
+    """
+    return (
+        edge.source,
+        edge.target,
+        edge.kind.value,
+        edge.evidence.line,
+        edge.classification.value,
+        edge.evidence.file,
+        edge.evidence.text,
+    )
+
+
 @dataclass(frozen=True)
 class Observation:
     """Something worth reporting that is not an edge (for example a non-literal dynamic import)."""
@@ -77,6 +94,18 @@ class FileError:
 
 
 @dataclass(frozen=True)
+class Cycle:
+    """A group of modules that depend on each other in a loop (SPEC.md section 8).
+
+    modules: the module ids in the cycle, sorted.
+    edges: the counted local edges whose source and target are both in the cycle.
+    """
+
+    modules: tuple[str, ...]
+    edges: tuple[Edge, ...]
+
+
+@dataclass(frozen=True)
 class ScanResult:
     """Everything one scan produces. output.py turns this into JSON."""
 
@@ -85,4 +114,5 @@ class ScanResult:
     edges: list[Edge] = field(default_factory=list)
     observations: list[Observation] = field(default_factory=list)
     errors: list[FileError] = field(default_factory=list)
-    schema_version: int = 1
+    cycles: list[Cycle] = field(default_factory=list)
+    schema_version: int = 2

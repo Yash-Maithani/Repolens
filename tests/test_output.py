@@ -69,6 +69,7 @@ def test_top_level_keys_and_trailing_newline() -> None:
     text = _scan(PROJECT)
     assert text.endswith("}\n")
     assert sorted(json.loads(text)) == [
+        "cycles",
         "edges",
         "errors",
         "language_roots",
@@ -76,7 +77,7 @@ def test_top_level_keys_and_trailing_newline() -> None:
         "observations",
         "schema_version",
     ]
-    assert json.loads(text)["schema_version"] == 1
+    assert json.loads(text)["schema_version"] == 2
 
 
 def test_lists_are_sorted() -> None:
