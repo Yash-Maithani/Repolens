@@ -45,8 +45,21 @@ Note: CI will fail on the resolver tests until the owner writes `resolve()`. Thi
 | D17 | If the `-o` file cannot be written, exit 2 with a clear message on stderr. | Same exit code as other user input problems. |
 | D18 | Non-local from-imports use the module part as the target (`from os import path` -> `os`). Local from-imports keep `pkg.name` if known, else `pkg`. | Checking whether a non-local name is a submodule would need the environment. |
 | D19 | Observations sort by `(file, line, reason)`. Errors sort by `(file, line, type)`. | Deterministic output. |
+| D20 | A small `python/analyzer.py` connects scanner, roots, extractor and resolver. `analyze()` takes an optional `resolve_fn`; tests that are not about resolution pass a stand-in resolver (`tests/helpers.py`). | Lets scanner, extractor, output and CLI be tested before `resolve()` exists, without skipping anything. |
+| D21 | `model.py` adds two structures that SPEC.md section 5 does not list: `FileError(file, line, type)` and `ScanResult`. The extractor has its own `RawImport` record (the import as written, before resolution). | The `errors` list needs a shape, and resolution needs a clear input. |
+| D22 | `detect_roots()` returns roots in resolution order (`["src", "."]`), not alphabetical order. | D9 says absolute imports try roots in list order, and alphabetical order would put "." first. |
+| D23 | A root's own `__init__.py` (for example `src/__init__.py`) falls back to the next shorter root (id `src`). A top-level `./__init__.py` gets id `__init__`. | Every file needs a non-empty id. |
+| D24 | The scanner skips symbolic links to files as well as to folders. | A link can point outside the repository. |
+| D25 | Dynamic imports are detected only as `importlib.import_module(...)` and `__import__(...)`, written with those exact names. A first argument that is not a non-empty string literal gives a `non-literal dynamic import` Observation. `__import__` with a level other than a literal 0 gives a `relative dynamic import` Observation. Evidence text for a dynamic import is the call expression. | Simple and predictable. Aliases such as `from importlib import import_module` would need name tracking. |
+| D26 | The error `type` is the exception class name (`SyntaxError`, `IndentationError`, `TabError`, `UnicodeDecodeError`, `OSError`). A file with null bytes is reported as `SyntaxError` with line null on every Python version. Files with errors are still listed in `modules`. | Python 3.10 and 3.11 raise ValueError for null bytes, 3.12+ raise SyntaxError. |
+| D27 | Sorting adds tie-breakers after the SPEC.md keys: edges by classification, evidence file and text; observations by text; errors with a null line first; modules by path. | The SPEC.md keys alone do not give a total order. |
+| D28 | The CLI writes UTF-8 bytes (to `sys.stdout.buffer` or with `write_bytes`). | On Windows, text mode would turn `\n` into `\r\n` and may use a non-UTF-8 encoding. |
+| D29 | The frozen stdlib list comes from CPython's `Python/stdlib_module_names.h` on the 3.10 to 3.13 branches (321 names, including private `_names`, as in `sys.stdlib_module_names`). The 3.11 list matched the running interpreter exactly. | Built from the source CPython itself uses, not from memory. |
+| D30 | Test layout: the scanner test builds ignored folders in a temporary folder; `tests/fixtures` is excluded from pytest collection; the "no backslashes" test checks decoded JSON values, not raw text. | `.gitignore` would drop committed `.venv`/`build` fixtures; fixtures contain `test_*.py` and broken files; raw JSON writes a quote as `\"`. |
+| D31 | CI uses `fail-fast: false` and runs on every push and pull request. | A failure on one Python version must not hide results on the others. |
 
 ## Verification log
 
 | Date | Command | Result |
 | --- | --- | --- |
+| 2026-11-06 | `pytest -q` (Python 3.11.9, Windows) | 49 passed, 20 failed. All 20 failures are in `tests/test_resolver.py` and are the `NotImplementedError` from the resolver stub (expected, D11). |
