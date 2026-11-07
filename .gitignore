@@ -1,0 +1,16 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python build and cache files
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+
+# RepoLens output
+graph.json

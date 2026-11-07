@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repolens"
+version = "0.0.1"
+description = "Local-first static architecture analysis for Python and Java projects."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Yash-Maithani" }]
+
+[project.scripts]
+repolens = "repolens.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# tests/fixtures holds small sample projects, not tests. Some of their files
+# are named test_*.py or contain syntax errors on purpose.
+norecursedirs = ["fixtures", ".*", "*.egg-info", "build", "dist", "venv"]
